@@ -225,6 +225,12 @@ TOOLS = [
 ]
 
 from openai import OpenAI
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 
 PROVIDERS = {
@@ -271,6 +277,80 @@ PROVIDERS = {
 current_provider = "nvidia"
 
 CONFIG_FILE = "waver_config.json"
+ENV_FILE = ".env"
+
+
+def load_env():
+    """从 .env 文件加载环境变量"""
+    env_vars = {}
+    try:
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    env_vars[key.strip()] = value.strip()
+    except FileNotFoundError:
+        pass
+    return env_vars
+
+
+def get_api_key_from_env(provider):
+    """从环境变量获取 API Key"""
+    env_vars = load_env()
+    key_name = f"{provider.upper()}_API_KEY"
+    return env_vars.get(key_name)
+
+
+def select_option(options, title="Select", default=0):
+    """交互式选择菜单（上下键）"""
+    if not RICH_AVAILABLE:
+        # 非 Rich 模式回退到简单输入
+        for i, opt in enumerate(options):
+            print(f"  {i + 1}. {opt}")
+        idx = input("> ").strip()
+        if idx.isdigit() and 1 <= int(idx) <= len(options):
+            return options[int(idx) - 1]
+        return options[default] if options else None
+
+    from rich.console import Console
+    from rich.prompt import Prompt
+    from rich import print as rprint
+
+    console = Console()
+    selected = default
+
+    while True:
+        console.clear()
+        rprint(f"\n[bold cyan]{title}[/bold cyan]\n")
+
+        for i, opt in enumerate(options):
+            if i == selected:
+                rprint(f"  [green]▶ {opt}[/green]")
+            else:
+                rprint(f"    {opt}")
+
+        rprint(f"\n  [dim]↑↓ 选择 | Enter 确认 | Esc 退出[/dim]")
+
+        try:
+            key = console.input("\n[dim]按方向键或直接回车: [/dim]").strip()
+        except:
+            break
+
+        if key == "\x1b[A":  # 上
+            selected = (selected - 1) % len(options)
+        elif key == "\x1b[B":  # 下
+            selected = (selected + 1) % len(options)
+        elif key == "\r" or key == "\n":  # 回车
+            return options[selected]
+        elif key == "\x1b":  # ESC
+            return options[default]
+        else:
+            # 直接输入数字
+            if key.isdigit() and 1 <= int(key) <= len(options):
+                return options[int(key) - 1]
+
+    return options[default] if options else None
 
 
 def load_settings():
@@ -292,7 +372,16 @@ def persist_settings(settings):
 
 def get_saved_api_keys():
     settings = load_settings()
-    return settings.get("api_keys", {})
+    keys = settings.get("api_keys", {})
+
+    # 合并环境变量中的 API Key（优先级更高）
+    env_vars = load_env()
+    for provider in PROVIDERS.keys():
+        env_key = f"{provider.upper()}_API_KEY"
+        if env_key in env_vars and env_vars[env_key]:
+            keys[provider] = env_vars[env_key]
+
+    return keys
 
 
 def save_api_key(provider, api_key):
@@ -301,6 +390,37 @@ def save_api_key(provider, api_key):
         settings["api_keys"] = {}
     settings["api_keys"][provider] = api_key
     persist_settings(settings)
+
+
+def display_reply(reply):
+    """显示带语法高亮的回复"""
+    if RICH_AVAILABLE:
+        from rich.markdown import Markdown
+        from rich.panel import Panel
+        from rich.syntax import Syntax
+
+        # 检查是否包含代码块
+        if "```" in reply:
+            console.print(
+                Panel.fit(
+                    "[dim]Thinking...[/dim]",
+                    title="[cyan]WAVER[/cyan]",
+                    border_style="blue",
+                )
+            )
+            # 使用 Markdown 渲染
+            md = Markdown(reply)
+            console.print(md)
+        else:
+            console.print(
+                Panel.fit(
+                    reply,
+                    title="[cyan]WAVER[/cyan]",
+                    border_style="blue",
+                )
+            )
+    else:
+        print(f"\n\033[94m>\033[0m {reply}\n")
 
 
 PROVIDER_URLS = {
@@ -495,16 +615,13 @@ def chat():
 
     saved_keys = get_saved_api_keys()
     if not saved_keys:
-        if RICH_AVAILABLE:
-            for k, v in PROVIDERS.items():
-                console.print(f"  [green]*[/green] {k} - {v['name']}")
-            current_provider = (
-                console.input(f"{DIM}Provider: {RESET}").strip() or "nvidia"
-            )
+        # 首次运行，显示交互式选择菜单
+        provider_options = [f"{k} - {v['name']}" for k, v in PROVIDERS.items()]
+        selected = select_option(provider_options, "Select Provider")
+        if selected:
+            current_provider = selected.split(" - ")[0]
         else:
-            for k, v in PROVIDERS.items():
-                print(f"  * {k} - {v['name']}")
-            current_provider = input("Provider: ").strip() or "nvidia"
+            current_provider = "nvidia"
         settings["provider"] = current_provider
         persist_settings(settings)
     else:
@@ -778,20 +895,8 @@ def chat():
                 else:
                     reply = message.content
 
-                if RICH_AVAILABLE:
-                    from rich.markdown import Markdown
-                    from rich.panel import Panel
-
-                    console.print(
-                        Panel.fit(
-                            reply,
-                            title="[cyan]WAVER[/cyan]",
-                            border_style="blue",
-                        )
-                    )
-                else:
-                    sys.stdout.write(f"\n\033[94m>\033[0m {reply}\n")
-                    sys.stdout.flush()
+                # 显示带语法高亮的回复
+                display_reply(reply)
             history.append({"role": "assistant", "content": reply})
         except Exception as e:
             err_msg = str(e)
