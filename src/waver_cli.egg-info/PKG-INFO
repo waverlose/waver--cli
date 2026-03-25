@@ -1,81 +1,30 @@
 Metadata-Version: 2.1
 Name: waver-cli
-Version: 1.0.4
-Summary: AI CLI tool with multi-provider support
-Author-email: Waver <waver@example.com>
+Version: 2.0.2
+Summary: Modern AI CLI Tool with multiple provider support
+Author: Waver Team
 License: MIT
-Project-URL: Homepage, https://github.com/waver/waver-cli
-Project-URL: Repository, https://github.com/waver/waver-cli
-Keywords: cli,ai,chat,nvidia,openai,deepseek,kimi,claude
+Project-URL: Homepage, https://github.com/waverlose/waver
+Project-URL: Repository, https://github.com/waverlose/waver
+Keywords: ai,cli,chatgpt,openai,claude,llm,nvidia,deepseek,kimi
 Classifier: Development Status :: 4 - Beta
-Classifier: Environment :: Console
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Requires-Python: >=3.8
-Description-Content-Type: text/markdown
-License-File: LICENSE
 Requires-Dist: openai>=1.0.0
+Requires-Dist: anthropic>=0.20.0
 Requires-Dist: rich>=13.0.0
-Requires-Dist: colorama>=0.4.6
+Requires-Dist: typer>=0.9.0
+Requires-Dist: keyring>=23.0.0
 Requires-Dist: tenacity>=8.0.0
-Requires-Dist: python-dotenv>=1.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
-Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
-
-# Waver CLI
-
-just fun
-
-AI CLI tool with multi-provider support.
-
-## Install
-
-```bash
-pip install waver-cli
-```
-
-Or from source:
-
-```bash
-pip install -e .
-```
-
-## Usage
-
-```bash
-waver
-```
-
-## Features
-
-- Multi-provider support: NVIDIA, OpenAI, DeepSeek, Kimi, GLM, Claude, Google AI
-- Tool calling: create files, read files, run commands
-- Config persistence
-- Stream mode support
-
-## Commands
-
-- `/help` - Show help
-- `/provider` - Switch AI provider
-- `/model` - Switch model
-- `/key` - Update API key
-- `/stream` - Toggle streaming
-- `/clear` - Clear history
-- `/save` - Save history
-- `/load` - Load history
-- `/quit` - Exit
-
-## Config
-
-Config is saved to `waver_config.json` in current directory.
-
-## License
-
-MIT
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"

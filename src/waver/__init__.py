@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 LOG_DIR = Path.home() / ".waver" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)

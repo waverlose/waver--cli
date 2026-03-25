@@ -1,2 +1,2 @@
 [console_scripts]
-waver = waver.cli:main
+waver = waver.main:chat
