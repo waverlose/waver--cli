@@ -1,5 +1,7 @@
 # Waver CLI
 
+just fun
+
 AI CLI tool with multi-provider support.
 
 ## Install
