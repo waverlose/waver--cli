@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "waver-cli"
-version = "1.0.4"
+version = "1.0.5"
 description = "AI CLI tool with multi-provider support"
 readme = "README.md"
 license = {text = "MIT"}
@@ -32,6 +32,7 @@ dependencies = [
     "colorama>=0.4.6",
     "tenacity>=8.0.0",
     "python-dotenv>=1.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]

@@ -278,6 +278,167 @@ current_provider = "nvidia"
 
 CONFIG_FILE = "waver_config.json"
 ENV_FILE = ".env"
+SECRET_KEY_FILE = ".waver_key"
+HISTORY_FILE = "waver_history.json"
+PROXY_CONFIG = "waver_proxy.json"
+
+
+def auto_save_history(history, file_path=HISTORY_FILE):
+    """自动保存对话历史"""
+    import json
+    # 限制历史长度，保留最近100条
+    saved_history = history[:100] if len(history) > 100 else history
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(saved_history, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def load_history(file_path=HISTORY_FILE):
+    """加载对话历史"""
+    import json
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def save_proxy_config(http_proxy=None, https_proxy=None):
+    """保存代理配置"""
+    import json
+    config = {}
+    if http_proxy:
+        config["http_proxy"] = http_proxy
+    if https_proxy:
+        config["https_proxy"] = https_proxy
+    try:
+        with open(PROXY_CONFIG, "w", encoding="utf-8") as f:
+            json.dump(config, f)
+    except Exception:
+        pass
+
+
+def load_proxy_config():
+    """加载代理配置"""
+    import json
+    try:
+        with open(PROXY_CONFIG, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def apply_proxy_config():
+    """应用代理配置到环境变量"""
+    import os
+    config = load_proxy_config()
+    if config.get("http_proxy"):
+        os.environ["http_proxy"] = config["http_proxy"]
+    if config.get("https_proxy"):
+        os.environ["https_proxy"] = config["https_proxy"]
+
+
+def get_or_create_key():
+    """获取或创建加密密钥"""
+    import os
+    from cryptography.fernet import Fernet
+
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, "rb") as f:
+            key = f.read()
+    else:
+        key = Fernet.generate_key()
+        with open(SECRET_KEY_FILE, "wb") as f:
+            f.write(key)
+        # 设置文件权限（仅所有者可读）
+        try:
+            os.chmod(SECRET_KEY_FILE, 0o600)
+        except:
+            pass
+    return key
+
+
+def encrypt_value(value: str) -> str:
+    """加密字符串"""
+    from cryptography.fernet import Fernet
+
+    key = get_or_create_key()
+    f = Fernet(key)
+    return f.encrypt(value.encode()).decode()
+
+
+def decrypt_value(encrypted: str) -> str:
+    """解密字符串"""
+    from cryptography.fernet import Fernet
+
+    key = get_or_create_key()
+    f = Fernet(key)
+    return f.decrypt(encrypted.encode()).decode()
+
+
+def safe_run_command(command: str, workdir: str = None) -> str:
+    """安全执行命令，防止注入攻击"""
+    import subprocess
+    import shlex
+
+    # 基础白名单检查
+    dangerous_patterns = [";", "&&", "||", "|", ">", ">>", "<", "`", "$(", "\n", "\r"]
+    for pattern in dangerous_patterns:
+        if pattern in command:
+            return f"Error: Dangerous pattern '{pattern}' not allowed"
+
+    # 使用 shlex.split 确保命令安全
+    try:
+        cmd_parts = shlex.split(command)
+    except ValueError as e:
+        return f"Error: Invalid command: {e}"
+
+    # 检查命令是否为绝对路径或系统命令
+    allowed_commands = {
+        "ls",
+        "dir",
+        "cd",
+        "pwd",
+        "cat",
+        "type",
+        "echo",
+        "mkdir",
+        "rm",
+        "del",
+        "copy",
+        "move",
+        "ren",
+        "python",
+        "pip",
+        "npm",
+        "git",
+        "node",
+    }
+
+    # 获取命令名
+    cmd_name = os.path.basename(cmd_parts[0]) if cmd_parts else ""
+
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=workdir,
+            timeout=30,
+        )
+        output = result.stdout + result.stderr
+        if len(output) > 5000:
+            output = output[:5000] + "\n... (truncated)"
+        return output if output else "Command executed (no output)"
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out (30s)"
+    except FileNotFoundError:
+        return f"Error: Command not found: {cmd_parts[0]}"
+    except Exception as e:
+        return f"Error: {e}"
 
 
 def load_env():
@@ -359,23 +520,36 @@ def persist_settings(settings):
 
 def get_saved_api_keys():
     settings = load_settings()
-    keys = settings.get("api_keys", {})
+    keys = settings.get("api_keys_encrypted", {})
+
+    # 解密存储的 keys
+    decrypted_keys = {}
+    for provider, encrypted_key in keys.items():
+        try:
+            decrypted_keys[provider] = decrypt_value(encrypted_key)
+        except:
+            # 兼容旧版本未加密的 key
+            decrypted_keys[provider] = encrypted_key
 
     # 合并环境变量中的 API Key（优先级更高）
     env_vars = load_env()
     for provider in PROVIDERS.keys():
         env_key = f"{provider.upper()}_API_KEY"
         if env_key in env_vars and env_vars[env_key]:
-            keys[provider] = env_vars[env_key]
+            decrypted_keys[provider] = env_vars[env_key]
 
-    return keys
+    return decrypted_keys
 
 
 def save_api_key(provider, api_key):
     settings = load_settings()
-    if "api_keys" not in settings:
-        settings["api_keys"] = {}
-    settings["api_keys"][provider] = api_key
+    if "api_keys_encrypted" not in settings:
+        settings["api_keys_encrypted"] = {}
+    # 加密存储
+    settings["api_keys_encrypted"][provider] = encrypt_value(api_key)
+    # 保留旧格式兼容性（可选删除）
+    if "api_keys" in settings:
+        del settings["api_keys"]
     persist_settings(settings)
 
 
@@ -488,20 +662,8 @@ def execute_tool(tool_call):
         workdir = arguments.get("workdir")
         if not command:
             return "Error: missing command"
-        try:
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                cwd=workdir,
-                timeout=10,
-            )
-            output = result.stdout + result.stderr
-            if len(output) > 2000:
-                output = output[:2000] + "\n... (output truncated)"
-            return f"Output:\n{output}"
-        except subprocess.TimeoutExpired:
+        # 使用安全的命令执行
+        return safe_run_command(command, workdir)
             return "Error: command timed out (10s)"
         except Exception as e:
             return f"Error: {e}"
@@ -592,13 +754,24 @@ def chat():
     if rules_content:
         system_content += f"\n\nGlobal rules:\n{rules_content}"
 
-    history = [
-        {
-            "role": "system",
-            "content": system_content,
-        }
-    ]
+    # 尝试加载历史记录
+    saved_history = load_history()
+    if saved_history:
+        history = saved_history
+        # 确保第一条是 system 消息
+        if not history or history[0].get("role") != "system":
+            history.insert(0, {"role": "system", "content": system_content})
+    else:
+        history = [
+            {
+                "role": "system",
+                "content": system_content,
+            }
+        ]
     stream = False
+
+    # 应用代理配置
+    apply_proxy_config()
 
     saved_keys = get_saved_api_keys()
     if not saved_keys:
@@ -673,6 +846,22 @@ def chat():
             history.clear()
             history.append({"role": "system", "content": "Reply in Chinese"})
             print(f"{YELLOW}Cleared{RESET}")
+            continue
+        elif text == "/proxy":
+            config = load_proxy_config()
+            print(f"{YELLOW}Current proxy settings:{RESET}")
+            print(f"  HTTP: {config.get('http_proxy', 'Not set')}")
+            print(f"  HTTPS: {config.get('https_proxy', 'Not set')}")
+            print(f"\n{YELLOW}Set proxy (or press Enter to skip):{RESET}")
+            proxy = input(f"HTTP proxy (e.g. http://127.0.0.1:7890): ").strip()
+            if proxy:
+                save_proxy_config(http_proxy=proxy, https_proxy=proxy)
+                apply_proxy_config()
+                print(f"{GREEN}Proxy saved and applied: {proxy}{RESET}")
+            continue
+        elif text == "/noproxy":
+            save_proxy_config(http_proxy="", https_proxy="")
+            print(f"{YELLOW}Proxy cleared{RESET}")
             continue
         elif text == "/model":
             provider_config = PROVIDERS.get(current_provider, {})
@@ -846,13 +1035,31 @@ def chat():
                     sys.stdout.write(f"{RESET}\n")
                     sys.stdout.flush()
             else:
-                resp = client.chat.completions.create(
-                    model=model,
-                    messages=history,
-                    max_tokens=1024,
-                    tools=TOOLS,
-                    tool_choice="auto",
-                )
+                # 显示加载动画
+                if RICH_AVAILABLE:
+                    from rich.live import Live
+                    from rich.spinners import Spinner
+
+                    with Live(
+                        Spinner("bouncingBar", style="bold cyan"),
+                        transient=True,
+                        refresh_per_second=20,
+                    ):
+                        resp = client.chat.completions.create(
+                            model=model,
+                            messages=history,
+                            max_tokens=1024,
+                            tools=TOOLS,
+                            tool_choice="auto",
+                        )
+                else:
+                    resp = client.chat.completions.create(
+                        model=model,
+                        messages=history,
+                        max_tokens=1024,
+                        tools=TOOLS,
+                        tool_choice="auto",
+                    )
                 message = resp.choices[0].message
 
                 if message.tool_calls:
@@ -885,6 +1092,8 @@ def chat():
                 # 显示带语法高亮的回复
                 display_reply(reply)
             history.append({"role": "assistant", "content": reply})
+            # 自动保存历史
+            auto_save_history(history)
         except Exception as e:
             err_msg = str(e)
             if "Connection" in err_msg:
