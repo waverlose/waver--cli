@@ -1,0 +1,6 @@
+{
+  "provider": "deepseek",
+  "api_keys": {
+    "deepseek": "sk-8344faeec342467e8cb0a4f129a844e5"
+  }
+}

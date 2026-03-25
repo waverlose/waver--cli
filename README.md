@@ -8,6 +8,13 @@ Modern AI CLI Tool with multi-provider support.
 pip install waver
 ```
 
+Or from source:
+
+```bash
+cd src
+pip install -e .
+```
+
 ## Usage
 
 ```bash
@@ -16,7 +23,7 @@ waver
 
 ## Features
 
-- Multi-provider: OpenAI, Claude, DeepSeek, NVIDIA, Kimi, GLM, Google AI
+- Multi-provider: OpenAI, Claude, DeepSeek, NVIDIA, Kimi, GLM, Google AI, SiliconFlow
 - Secure: API keys encrypted with system keyring
 - Rich UI: Beautiful terminal interface with syntax highlighting
 - Tools: File read/write, command execution
