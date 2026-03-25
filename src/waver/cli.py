@@ -303,54 +303,41 @@ def get_api_key_from_env(provider):
 
 
 def select_option(options, title="Select", default=0):
-    """交互式选择菜单（上下键）"""
-    if not RICH_AVAILABLE:
-        # 非 Rich 模式回退到简单输入
-        for i, opt in enumerate(options):
-            print(f"  {i + 1}. {opt}")
-        idx = input("> ").strip()
-        if idx.isdigit() and 1 <= int(idx) <= len(options):
-            return options[int(idx) - 1]
-        return options[default] if options else None
+    """交互式选择菜单"""
+    if RICH_AVAILABLE:
+        from rich.console import Console
+        from rich.prompt import Prompt
 
-    from rich.console import Console
-    from rich.prompt import Prompt
-    from rich import print as rprint
-
-    console = Console()
-    selected = default
+        console = Console()
+        prompt = Prompt()
 
     while True:
-        console.clear()
-        rprint(f"\n[bold cyan]{title}[/bold cyan]\n")
+        if RICH_AVAILABLE:
+            console.clear()
+            from rich import print as rprint
 
-        for i, opt in enumerate(options):
-            if i == selected:
-                rprint(f"  [green]▶ {opt}[/green]")
-            else:
-                rprint(f"    {opt}")
+            rprint(f"\n[bold cyan]{title}[/bold cyan]\n")
 
-        rprint(f"\n  [dim]↑↓ 选择 | Enter 确认 | Esc 退出[/dim]")
+            for i, opt in enumerate(options):
+                if i == default:
+                    rprint(f"  [green]▶ {opt}[/green]")
+                else:
+                    rprint(f"    {opt}")
 
-        try:
-            key = console.input("\n[dim]按方向键或直接回车: [/dim]").strip()
-        except:
-            break
-
-        if key == "\x1b[A":  # 上
-            selected = (selected - 1) % len(options)
-        elif key == "\x1b[B":  # 下
-            selected = (selected + 1) % len(options)
-        elif key == "\r" or key == "\n":  # 回车
-            return options[selected]
-        elif key == "\x1b":  # ESC
-            return options[default]
+            rprint(f"\n[dim]输入编号 (1-{len(options)}):[/dim]")
+            choice = console.input("> ").strip()
         else:
-            # 直接输入数字
-            if key.isdigit() and 1 <= int(key) <= len(options):
-                return options[int(key) - 1]
+            print(f"\n{title}\n")
+            for i, opt in enumerate(options):
+                marker = "▶" if i == default else " "
+                print(f"  {marker} {i + 1}. {opt}")
+            print(f"\n输入编号 (1-{len(options)}):")
+            choice = input("> ").strip()
 
-    return options[default] if options else None
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            return options[int(choice) - 1]
+        elif choice == "":
+            return options[default] if options else None
 
 
 def load_settings():
@@ -574,7 +561,7 @@ def _show_boot_animation():
     print(ascii_art)
     print("\033[90m┌─────────────────────────────────────────────┐\033[0m")
     print(
-        "\033[90m│\033[0m  \033[1mv1.0.2\033[0m                                    \033[90m│\033[0m"
+        "\033[90m│\033[0m  \033[1mv1.0.3\033[0m                                    \033[90m│\033[0m"
     )
     print(
         "\033[90m│\033[0m  \033[90mnow or never\033[0m                              \033[90m│\033[0m"

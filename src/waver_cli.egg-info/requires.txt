@@ -1,6 +1,8 @@
 openai>=1.0.0
 rich>=13.0.0
 colorama>=0.4.6
+tenacity>=8.0.0
+python-dotenv>=1.0.0
 
 [dev]
 pytest>=7.0.0
