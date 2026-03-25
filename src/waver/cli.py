@@ -249,9 +249,8 @@ PROVIDERS = {
     "kimi": {
         "name": "Kimi",
         "base_url": "https://api.moonshot.cn/v1",
-        "default_model": "kimi-long-v2",
+        "default_model": "moonshot-v1-8k",
         "api_type": "openai",
-        "extra_headers": {"x-moonshot-model-id": "kimi-long-v2"},
     },
     "glm": {
         "name": "GLM",
@@ -442,24 +441,36 @@ def _show_boot_animation():
 
     os.system("cls" if os.name == "nt" else "clear")
 
-    ascii_art = """
-\033[96m    ██╗    ██╗ █████╗ ██╗   ██╗███████╗██████╗\033[0m
-\033[96m    ██║    ██║██╔══██╗██║   ██║██╔════╝██╔══██╗\033[0m
-\033[96m    ██║ █╗ ██║███████║██║   ██║█████╗  ██████╔╝\033[0m
-\033[96m    ██║███╗██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗\033[0m
-\033[96m    ╚███╔███╔╝██║  ██║ ╚████╔╝ ███████╗██║  ██║\033[0m
-\033[96m     ╚══╝╚══╝ ╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝\033[0m
-    """
+    if RICH_AVAILABLE:
+        from rich.panel import Panel
+        from rich.text import Text
+        from rich.console import Console
 
-    print(ascii_art)
-    print("\033[90m┌─────────────────────────────────────────────┐\033[0m")
-    print(
-        "\033[90m│\033[0m  \033[1mv1.0.0\033[0m                                    \033[90m│\033[0m"
-    )
-    print(
-        "\033[90m│\033[0m  \033[90mnow or never\033[0m                              \033[90m│\033[0m"
-    )
-    print("\033[90m└─────────────────────────────────────────────┘\033[0m")
+        console = Console()
+        console.print(
+            Panel.fit(
+                Text("WAVER", justify="center", style="bold cyan"),
+                border_style="cyan",
+                subtitle="v1.0.1",
+                subtitle_align="right",
+            )
+        )
+        console.print()
+    else:
+        ascii_art = """
+    ██╗    ██╗ █████╗ ██╗   ██╗███████╗██████╗
+    ██║    ██║██╔══██╗██║   ██║██╔════╝██╔══██╗
+    ██║ █╗ ██║███████║██║   ██║█████╗  ██████╔╝
+    ██║███╗██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
+    ╚███╔███╔╝██║  ██║ ╚████╔╝ ███████╗██║  ██║
+     ╚══╝╚══╝ ╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
+        """
+        print(ascii_art)
+        print("\033[90m┌─────────────────────────────────────────────┐\033[0m")
+        print(
+            "\033[90m│\033[0m  \033[1mv1.0.1\033[0m                                    \033[90m│\033[0m"
+        )
+        print("\033[90m└─────────────────────────────────────────────┘\033[0m")
 
 
 def chat():
@@ -551,7 +562,15 @@ def chat():
     while True:
         try:
             cwd = os.getcwd()
-            text = input(f"\n\033[90m{cwd}\033[0m\n\033[96m>\033[0m ").strip()
+            # 显示状态栏
+            if RICH_AVAILABLE:
+                from rich.status import Status
+
+                status_text = f"[cyan]{current_provider}[/cyan] • [dim]{model}[/dim]"
+                console.print(status_text, end=" ")
+            else:
+                print(f"\033[90m[{current_provider} {model}]\033[0m", end=" ")
+            text = input("> ").strip()
         except (KeyboardInterrupt, EOFError):
             break
 
@@ -777,7 +796,16 @@ def chat():
                     reply = message.content
 
                 if RICH_AVAILABLE:
-                    console.print(f"\n\033[94m>\033[0m {reply}")
+                    from rich.markdown import Markdown
+                    from rich.panel import Panel
+
+                    console.print(
+                        Panel.fit(
+                            reply,
+                            title="[cyan]WAVER[/cyan]",
+                            border_style="blue",
+                        )
+                    )
                 else:
                     sys.stdout.write(f"\n\033[94m>\033[0m {reply}\n")
                     sys.stdout.flush()

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "waver-cli"
-version = "1.0.1"
+version = "1.0.2"
 description = "AI CLI tool with multi-provider support"
 readme = "README.md"
 license = {text = "MIT"}
