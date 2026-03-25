@@ -467,7 +467,9 @@ def chat():
 
     settings = load_settings()
     current_provider = settings.get("provider", "nvidia")
-    model = settings.get("model", "meta/llama-3.1-70b-instruct")
+    # Default to provider's default model if not set
+    default_model = PROVIDERS.get(current_provider, {}).get("default_model", "gpt-4o")
+    model = settings.get("model", default_model)
 
     rules_content = ""
     try:
