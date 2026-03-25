@@ -438,39 +438,29 @@ def get_available_models(client, provider="nvidia"):
 
 def _show_boot_animation():
     import os
+    import sys
 
     os.system("cls" if os.name == "nt" else "clear")
 
-    if RICH_AVAILABLE:
-        from rich.panel import Panel
-        from rich.text import Text
-        from rich.console import Console
+    ascii_art = """
+\033[96m    ██╗    ██╗ █████╗ ██╗   ██╗███████╗██████╗\033[0m
+\033[96m    ██║    ██║██╔══██╗██║   ██║██╔════╝██╔══██╗\033[0m
+\033[96m    ██║ █╗ ██║███████║██║   ██║█████╗  ██████╔╝\033[0m
+\033[96m    ██║███╗██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗\033[0m
+\033[96m    ╚███╔███╔╝██║  ██║ ╚████╔╝ ███████╗██║  ██║\033[0m
+\033[96m     ╚══╝╚══╝ ╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝\033[0m
+    """
 
-        console = Console()
-        console.print(
-            Panel.fit(
-                Text("WAVER", justify="center", style="bold cyan"),
-                border_style="cyan",
-                subtitle="v1.0.1",
-                subtitle_align="right",
-            )
-        )
-        console.print()
-    else:
-        ascii_art = """
-    ██╗    ██╗ █████╗ ██╗   ██╗███████╗██████╗
-    ██║    ██║██╔══██╗██║   ██║██╔════╝██╔══██╗
-    ██║ █╗ ██║███████║██║   ██║█████╗  ██████╔╝
-    ██║███╗██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
-    ╚███╔███╔╝██║  ██║ ╚████╔╝ ███████╗██║  ██║
-     ╚══╝╚══╝ ╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
-        """
-        print(ascii_art)
-        print("\033[90m┌─────────────────────────────────────────────┐\033[0m")
-        print(
-            "\033[90m│\033[0m  \033[1mv1.0.1\033[0m                                    \033[90m│\033[0m"
-        )
-        print("\033[90m└─────────────────────────────────────────────┘\033[0m")
+    print(ascii_art)
+    print("\033[90m┌─────────────────────────────────────────────┐\033[0m")
+    print(
+        "\033[90m│\033[0m  \033[1mv1.0.2\033[0m                                    \033[90m│\033[0m"
+    )
+    print(
+        "\033[90m│\033[0m  \033[90mnow or never\033[0m                              \033[90m│\033[0m"
+    )
+    print("\033[90m└─────────────────────────────────────────────┘\033[0m")
+    sys.stdout.flush()
 
 
 def chat():
@@ -562,15 +552,8 @@ def chat():
     while True:
         try:
             cwd = os.getcwd()
-            # 显示状态栏
-            if RICH_AVAILABLE:
-                from rich.status import Status
-
-                status_text = f"[cyan]{current_provider}[/cyan] • [dim]{model}[/dim]"
-                console.print(status_text, end=" ")
-            else:
-                print(f"\033[90m[{current_provider} {model}]\033[0m", end=" ")
-            text = input("> ").strip()
+            prompt = f"\033[90m[{current_provider} {model}]\033[0m > "
+            text = input(prompt).strip()
         except (KeyboardInterrupt, EOFError):
             break
 

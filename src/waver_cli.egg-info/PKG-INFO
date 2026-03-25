@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: waver-cli
-Version: 1.0.1
+Version: 1.0.2
 Summary: AI CLI tool with multi-provider support
 Author-email: Waver <waver@example.com>
 License: MIT
@@ -28,6 +28,8 @@ Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
 
 # Waver CLI
+
+just fun
 
 AI CLI tool with multi-provider support.
 
